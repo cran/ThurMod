@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="Markus Thomas Jansen" />
+
+<meta name="date" content="2023-09-19" />
+
+<title>Simulating data and estimating Thurstonian IRT and factor models with ThurMod</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Simulating data and estimating Thurstonian
+IRT and factor models with ThurMod</h1>
+<h4 class="author">Markus Thomas Jansen</h4>
+<h4 class="date">2023-09-19</h4>
+
+
+
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+In this vignette, the basic procedures in data-handling, simulation and
+estimation with the package <code>ThurMod</code> are performed. For the
+moment, we separate two different model types:
+<ul>
+<li>
+A Thurstonian factor model
+</li>
+<li>
+A Thurstonian IRT model
+</li>
+</ul>
+<p>The Thurstonian factor model was introduced by Maydeu-Olivares &amp;
+Böckenholt (2005), the Thurstonian IRT model was introduced by
+Maydeu-Olivares &amp; Brown (2010). For a review see Jansen &amp;
+Schulze (2023a). For further extensions and discussion about the model
+types see Jansen &amp; Schulze (2023b). For example, the factor and IRT
+model both can be further differentiated. For the differentiation we use
+the design matrix <span class="math inline">\(A\)</span> which
+represents all paired comparisons of a design. For a design of four
+items, this would be</p>
+<pre><code>     [,1] [,2] [,3] [,4]
+[1,]    1   -1    0    0
+[2,]    1    0   -1    0
+[3,]    1    0    0   -1
+[4,]    0    1   -1    0
+[5,]    0    1    0   -1
+[6,]    0    0    1   -1</code></pre>
+<p>The design matrix can be (Jansen &amp; Schulze, 2023b):</p>
+<ul>
+<li>
+A <b>full</b> matrix, that is all possible paired comparisons are
+considered
+</li>
+<li>
+An <b>unlinked block</b> matrix, where only blocks of items and the
+respective paired comparisons are considered
+</li>
+<li>
+A <b>partially linked block</b> matrix, where some of the blocks are
+linked
+</li>
+<li>
+A <b>complete linked block</b> matrix, where all of the blocks are
+linked
+</li>
+<li>
+Anything in between of the other models
+</li>
+</ul>
+</div>
+<div id="examples" class="section level1">
+<h1>Examples</h1>
+<p>First, we will load the package required in the vignette.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">library</span>(ThurMod)</span></code></pre></div>
+The next step is to define the model we are interested in. For this we
+have to define the following aspects:
+<ul>
+<li>
+the number of factors of the model
+</li>
+<li>
+the number of items of the model
+</li>
+<li>
+the item-to-factor relations
+</li>
+</ul>
+We consider a model with four factors (traits), measured by 12 items.
+The item-to-factor relations are defined so that
+<ul>
+<li>
+items 1, 5, 9 measure factor 1
+</li>
+<li>
+items 2, 6, 10 measure factor 2
+</li>
+<li>
+items 3, 7, 11 measure factor 3
+</li>
+<li>
+items 4, 8, 12 measure factor 4.
+</li>
+</ul>
+<p>Further we simulate data of 1000 respondents with loadings between
+.30 and .95 and latent utility means between -1 and 1. We assume that
+the data results from rankings, that is that transitivity between
+responses holds (the variance of the binary indicators is zero).
+Further, we assume uncorrelated data. We will simulate the data of all
+paired comparisons possible (see Jansen &amp; Schulze, 2023b).</p>
+<p>Set up the simulation conditions:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>nfactor <span class="ot">&lt;-</span> <span class="dv">4</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>nitem <span class="ot">&lt;-</span> <span class="dv">12</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>nperson <span class="ot">&lt;-</span> <span class="dv">1000</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>itf <span class="ot">&lt;-</span> <span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>, <span class="dv">3</span>)</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>varcov <span class="ot">&lt;-</span> <span class="fu">diag</span>(<span class="dv">1</span>, <span class="dv">4</span>)</span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="co"># latent utility means</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">69</span>)</span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>lmu <span class="ot">&lt;-</span> <span class="fu">runif</span>(nitem, <span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>)</span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>loadings <span class="ot">&lt;-</span> <span class="fu">runif</span>(nitem, <span class="fl">0.30</span>, <span class="fl">0.95</span>)</span></code></pre></div>
+<p>Next, we simulate a data set based on the true parameter values:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">sim.data</span>(<span class="at">nfactor =</span> nfactor, <span class="at">nitem =</span> nitem, <span class="at">nperson =</span> nperson, <span class="at">itf =</span> itf,</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>                 <span class="at">varcov =</span> varcov, <span class="at">lmu =</span> lmu, <span class="at">loadings =</span> loadings)</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="co">#save the file</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="fu">write.table</span>(data, <span class="fu">paste0</span>(<span class="fu">tempdir</span>(),<span class="st">&#39;/&#39;</span>,<span class="st">&#39;myDataFile_f.dat&#39;</span>), <span class="at">quote =</span> <span class="cn">FALSE</span>, </span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>            <span class="at">sep =</span> <span class="st">&quot; &quot;</span>, <span class="at">col.names =</span> <span class="cn">FALSE</span>, <span class="at">row.names =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<p>The data set contains all (12 )/2 = 66 possible paired comparison
+variables. With this data set we will perform analyses of the full
+design (IRT, CFA).</p>
+<div id="full-design" class="section level2">
+<h2>Full design</h2>
+<p>Full designs include all paired comparisons. The estimation of these
+designs can take a while, as with categorical data a large correlations
+matrix must be estimated.</p>
+<p>For all functions, the blocks we use must be defined. In a full
+design, there is only one block with all items:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>blocks <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="dv">1</span><span class="sc">:</span>nitem, <span class="at">nrow =</span> <span class="dv">1</span>)</span></code></pre></div>
+<p>The <code>blocks</code> must be defined as a matrix where the rows
+correspond to each block. Only for a full design, a vector, for example,
+<code>1:12</code> would work.</p>
+<div id="thurstonian-factor-models" class="section level3">
+<h3>Thurstonian factor models</h3>
+<p>We will analyse the data with Mplus and <code>lavaan</code>. We can
+do this in two ways: First, in three separate steps, second,
+directly.</p>
+<p>Way 1, step 1: Build syntax</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="co"># Mplus</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="fu">syntax.mplus</span>(blocks, itf, <span class="at">model =</span> <span class="st">&#39;lmean&#39;</span>, <span class="at">input_path =</span> <span class="st">&#39;myFC_model_f.inp&#39;</span>, <span class="at">data_path =</span> </span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>               <span class="st">&quot;myDataFile_f.dat&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="co">#lavaan</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>modelsyn <span class="ot">&lt;-</span> <span class="fu">syntax.lavaan</span>(blocks, itf, <span class="at">model =</span> <span class="st">&#39;lmean&#39;</span>)</span></code></pre></div>
+<p>For step 2, now these syntaxes must be run (evaluation will not be
+performed here):</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="co"># Mplus</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="fu">system</span>(<span class="st">&#39;mplus myFC_model_f.inp&#39;</span>, <span class="at">wait =</span> <span class="cn">TRUE</span>, <span class="at">show.output.on.console=</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="co">#lavaan</span></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>results_lav1 <span class="ot">&lt;-</span> lavaan<span class="sc">::</span><span class="fu">lavaan</span>(modelsyn, <span class="at">data =</span> data, <span class="at">ordered =</span> <span class="cn">TRUE</span>, <span class="at">auto.fix.first =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>                      <span class="at">auto.var =</span> <span class="cn">TRUE</span>, <span class="at">int.lv.free =</span> <span class="cn">TRUE</span>, <span class="at">parameterization =</span> <span class="st">&quot;theta&quot;</span>,</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>                      <span class="at">estimator =</span> <span class="st">&#39;ULSMV&#39;</span>)</span></code></pre></div>
+<p>If you replicate this, be patient, it can take about 20 minutes each,
+depending on your processing power.</p>
+<p>Step 3: Read results. For Mplus you can either open the output file,
+or use <code>read.mplus</code></p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="co"># Mplus</span></span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>results_mplus1 <span class="ot">&lt;-</span> <span class="fu">read.mplus</span>(blocks, itf, <span class="at">model =</span> <span class="st">&#39;lmean&#39;</span>, <span class="at">output_path =</span> <span class="st">&quot;myFC_model_f.out&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">unlist</span>(results_mplus1<span class="sc">$</span>fit)</span></code></pre></div>
+<pre><code>          srmr            cfi            tli          chisq             df         pvalue 
+        0.0460         1.0000         1.0000      2131.5890      2171.0000         0.7231 
+       blchisq           bldf       blpvalue          rmsea        rmsea_p rmsea.ci.lower 
+    20861.0240      2145.0000         0.0000         0.0000         1.0000         0.0000 
+rmsea.ci.upper 
+        0.0060 </code></pre>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>results_lav1 <span class="ot">&lt;-</span> lavaan<span class="sc">::</span><span class="fu">fitmeasures</span>(results_lav1)[<span class="fu">c</span>(<span class="st">&#39;chisq.scaled&#39;</span>,<span class="st">&#39;df.scaled&#39;</span>,<span class="st">&#39;pvalue.scaled&#39;</span>,</span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>                                     <span class="st">&#39;rmsea.scaled&#39;</span>,<span class="st">&#39;rmsea.ci.lower.scaled&#39;</span>,<span class="st">&#39;rmsea.ci.upper.scaled&#39;</span>,</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>                                     <span class="st">&#39;rmsea.pvalue.scaled&#39;</span>,<span class="st">&#39;cfi.scaled&#39;</span>)]</span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>results_lav1</span></code></pre></div>
+<pre><code>         chisq.scaled             df.scaled         pvalue.scaled          rmsea.scaled 
+         2.130962e+03          2.171000e+03          7.261660e-01          0.000000e+00 
+rmsea.ci.lower.scaled rmsea.ci.upper.scaled   rmsea.pvalue.scaled            cfi.scaled 
+         0.000000e+00          5.706839e-03          1.000000e+00          1.000000e+00 </code></pre>
+<p>The second way is to use <code>fit_mplus</code> or
+<code>fit_lavaan</code>, each function does the above steps at once:</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="co"># Mplus</span></span>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a>results_mplus2 <span class="ot">&lt;-</span> <span class="fu">fit.mplus</span>(blocks, itf, <span class="at">model =</span> <span class="st">&#39;lmean&#39;</span>, <span class="at">input_path =</span> <span class="st">&#39;myFC_model_f.inp&#39;</span>,</span>
+<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a>                            <span class="at">output_path =</span> <span class="st">&quot;myFC_model_f.out&quot;</span>, <span class="at">data_path =</span> <span class="st">&quot;myDataFile_f.dat&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a><span class="co">#lavaan</span></span>
+<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a>results_lav2 <span class="ot">&lt;-</span> <span class="fu">fit.lavaan</span>(blocks, itf, <span class="at">model =</span> <span class="st">&#39;lmean&#39;</span>, <span class="at">data =</span> data)</span>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a>lavaan<span class="sc">::</span><span class="fu">fitmeasures</span>(results_lav2)[<span class="fu">c</span>(<span class="st">&#39;rmsea.scaled&#39;</span>,<span class="st">&#39;rmsea.ci.lower.scaled&#39;</span>,<span class="st">&#39;rmsea.ci.upper.scaled&#39;</span>,</span>
+<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a>                                    <span class="st">&#39;rmsea.pvalue.scaled&#39;</span>,<span class="st">&#39;cfi.scaled&#39;</span>)]</span></code></pre></div>
+</div>
+<div id="thurstonian-irt-models" class="section level3">
+<h3>Thurstonian IRT models</h3>
+<p>For IRT models, the procedure is the same, just change
+<code>model = &#39;lmean&#39;</code> to <code>model = &#39;irt&#39;</code>, for
+example</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="co"># Mplus</span></span>
+<span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a>results_mplus2irt <span class="ot">&lt;-</span> <span class="fu">fit.mplus</span>(blocks, itf, <span class="at">model =</span> <span class="st">&#39;irt&#39;</span>, <span class="at">input_path =</span> <span class="st">&#39;myFC_model_irt.inp&#39;</span>,</span>
+<span id="cb18-3"><a href="#cb18-3" tabindex="-1"></a>                               <span class="at">output_path =</span> <span class="st">&quot;myFC_model_irt.out&quot;</span>, <span class="at">data_path =</span> <span class="st">&quot;myDataFile_f.dat&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a><span class="fu">unlist</span>(results_mplus2irt<span class="sc">$</span>fit)</span></code></pre></div>
+<pre><code>          srmr            cfi            tli          chisq             df         pvalue 
+        0.0460         1.0000         1.0000      2076.5110      2116.0000         0.7261 
+       blchisq           bldf       blpvalue          rmsea        rmsea_p rmsea.ci.lower 
+    20861.0240      2145.0000         0.0000         0.0000         1.0000         0.0000 
+rmsea.ci.upper 
+        0.0060 </code></pre>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a><span class="co">#lavaan</span></span>
+<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a>results_lav2irt <span class="ot">&lt;-</span> <span class="fu">fit.lavaan</span>(blocks, itf, <span class="at">model =</span> <span class="st">&#39;irt&#39;</span>, <span class="at">data =</span> data)</span></code></pre></div>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a>results_lav2irt <span class="ot">&lt;-</span> lavaan<span class="sc">::</span><span class="fu">fitmeasures</span>(results_lav2irt)[<span class="fu">c</span>(<span class="st">&#39;chisq.scaled&#39;</span>,<span class="st">&#39;df.scaled&#39;</span>,<span class="st">&#39;pvalue.scaled&#39;</span>,</span>
+<span id="cb22-2"><a href="#cb22-2" tabindex="-1"></a>                                     <span class="st">&#39;rmsea.scaled&#39;</span>,<span class="st">&#39;rmsea.ci.lower.scaled&#39;</span>,<span class="st">&#39;rmsea.ci.upper.scaled&#39;</span>,</span>
+<span id="cb22-3"><a href="#cb22-3" tabindex="-1"></a>                                     <span class="st">&#39;rmsea.pvalue.scaled&#39;</span>,<span class="st">&#39;cfi.scaled&#39;</span>)]</span></code></pre></div>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" tabindex="-1"></a>results_lav2irt</span></code></pre></div>
+<pre><code>         chisq.scaled             df.scaled         pvalue.scaled          rmsea.scaled 
+         2.075897e+03          2.116000e+03          7.291136e-01          0.000000e+00 
+rmsea.ci.lower.scaled rmsea.ci.upper.scaled   rmsea.pvalue.scaled            cfi.scaled 
+         0.000000e+00          5.719821e-03          1.000000e+00          1.000000e+00 </code></pre>
+<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" tabindex="-1"></a>scores_results_lav2irt <span class="ot">&lt;-</span> lavaan<span class="sc">::</span><span class="fu">lavPredict</span>(results_lav2irt)</span></code></pre></div>
+</div>
+</div>
+<div id="block-designs---unlinked" class="section level2">
+<h2>Block designs - unlinked</h2>
+<p>The first block designs were introduced as multidimensional
+forced-choice blocks (Brown &amp; Maydeu-Olivares, 2011). However, it
+was shown that the designs must neither be multidimensional, nor must
+every paired comparison only be contained once (Jansen &amp; Schulze,
+2023b).</p>
+<p>We first simulate a new data set. Set up the simulation
+conditions:</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" tabindex="-1"></a>nfactor <span class="ot">&lt;-</span> <span class="dv">5</span></span>
+<span id="cb26-2"><a href="#cb26-2" tabindex="-1"></a>nitem <span class="ot">&lt;-</span> <span class="dv">30</span></span>
+<span id="cb26-3"><a href="#cb26-3" tabindex="-1"></a>nperson <span class="ot">&lt;-</span> <span class="dv">1000</span></span>
+<span id="cb26-4"><a href="#cb26-4" tabindex="-1"></a>itf <span class="ot">&lt;-</span> <span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>, <span class="dv">6</span>)</span>
+<span id="cb26-5"><a href="#cb26-5" tabindex="-1"></a>varcov <span class="ot">&lt;-</span> <span class="fu">diag</span>(<span class="dv">1</span>, <span class="dv">5</span>)</span>
+<span id="cb26-6"><a href="#cb26-6" tabindex="-1"></a></span>
+<span id="cb26-7"><a href="#cb26-7" tabindex="-1"></a><span class="co"># latent utility means</span></span>
+<span id="cb26-8"><a href="#cb26-8" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">69</span>)</span>
+<span id="cb26-9"><a href="#cb26-9" tabindex="-1"></a>lmu <span class="ot">&lt;-</span> <span class="fu">runif</span>(nitem, <span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>)</span>
+<span id="cb26-10"><a href="#cb26-10" tabindex="-1"></a>loadings <span class="ot">&lt;-</span> <span class="fu">runif</span>(nitem, <span class="fl">0.30</span>, <span class="fl">0.95</span>)</span></code></pre></div>
+<p>Next, we simulate a data set based on the true parameter values:</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">1234</span>)</span>
+<span id="cb27-2"><a href="#cb27-2" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">sim.data</span>(<span class="at">nfactor =</span> nfactor, <span class="at">nitem =</span> nitem, <span class="at">nperson =</span> nperson, <span class="at">itf =</span> itf, <span class="at">varcov =</span> varcov,</span>
+<span id="cb27-3"><a href="#cb27-3" tabindex="-1"></a>                 <span class="at">lmu =</span> lmu, <span class="at">loadings =</span> loadings)</span></code></pre></div>
+<div class="sourceCode" id="cb28"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" tabindex="-1"></a><span class="co">#save the file</span></span>
+<span id="cb28-2"><a href="#cb28-2" tabindex="-1"></a><span class="fu">write.table</span>(data,<span class="st">&#39;myDataFile.dat&#39;</span>, <span class="at">quote =</span> <span class="cn">FALSE</span>, <span class="at">sep =</span> <span class="st">&quot; &quot;</span>, <span class="at">col.names =</span> <span class="cn">FALSE</span>, <span class="at">row.names =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<p>Next, we consider unlinked blocks of three items (triplets):</p>
+<div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" tabindex="-1"></a>blocks <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="fu">sample</span>(<span class="dv">1</span><span class="sc">:</span>nitem, nitem), <span class="at">ncol =</span> <span class="dv">3</span>)</span></code></pre></div>
+<p>The blocks are defined by a matrix where the rows are the blocks and
+the number of columns is the number of items per block. Before we can
+fit the model, we must ensure that the data fits to the syntax we
+create. The data simulated before assumes that all items are in
+ascending order. This is important, as the order of the items determine
+the coding. We code binary items as <span class="math display">\[\begin{equation}
+   y_{l} =
+   \begin{cases}
+     1 &amp; \text{if item $i$ is chosen over item $j$} \\
+     0 &amp; \text{else} .\\
+   \end{cases}
+\end{equation}\]</span> In a ranking task, all choice alternatives are
+presented at once, but for each possible comparison, the coding scheme
+can be used. For example, consider <span class="math inline">\(n =
+3\)</span> items which are labeled as {A, B, C}. Then we have the pairs
+{A, B}, {A, C}, {B, C}. If for {A, B} A is preferred over B then <span class="math inline">\(y_{A,B}=1\)</span> and 0 otherwise. This can be
+done for every paired comparison and ranking task (Maydeu-Olivares &amp;
+Böckenholt, 2005): For {A,C,B} the binary outcomes are <span class="math inline">\(y_{A,B}=1\)</span>, <span class="math inline">\(y_{A,C}=1\)</span>, and <span class="math inline">\(y_{B,C}=0\)</span>. However, if the order of the
+binary item is changed, then the coding is changed accordingly,
+e.g. <span class="math inline">\(y_{B,A}=0\)</span>, <span class="math inline">\(y_{C,A}=0\)</span>, and <span class="math inline">\(y_{C,B}=1\)</span>.</p>
+<p>We can get an overview over all possible comparisons by the block
+design, by using <code>pair.combn</code>:</p>
+<div class="sourceCode" id="cb30"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" tabindex="-1"></a><span class="fu">pair.combn</span>(blocks)</span></code></pre></div>
+<pre><code>      [,1] [,2]
+ [1,]    1   15
+ [2,]    2   19
+ [3,]    4   18
+ [4,]    4   21
+ [5,]    5   20
+ [6,]    7   30
+ [7,]    8    2
+ [8,]    8   19
+ [9,]    9   10
+[10,]   11    6
+[11,]   13   17
+[12,]   14    1
+[13,]   14   15
+[14,]   16    5
+[15,]   16   20
+[16,]   21   18
+[17,]   22    3
+[18,]   23    3
+[19,]   23   22
+[20,]   24   12
+[21,]   24   26
+[22,]   25   13
+[23,]   25   17
+[24,]   26   12
+[25,]   27    7
+[26,]   27   30
+[27,]   28    6
+[28,]   28   11
+[29,]   29    9
+[30,]   29   10</code></pre>
+<p>See that we have some items, that are not in ascending order. The
+data simulated assumes, that the first named item (item <span class="math inline">\(i\)</span>) has a smaller number e.g., i3i9. The
+blocks we created however, have some comparisons, where the first items
+have a larger number e.g. i9i3. There are two ways to fit the syntax to
+the data: First, we can simply sort the blocks via
+<code>blocksort</code>:</p>
+<div class="sourceCode" id="cb32"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" tabindex="-1"></a>blocks_sorted <span class="ot">&lt;-</span> <span class="fu">blocksort</span>(blocks)</span>
+<span id="cb32-2"><a href="#cb32-2" tabindex="-1"></a><span class="fu">pair.combn</span>(blocks_sorted)</span></code></pre></div>
+<pre><code>      [,1] [,2]
+ [1,]    1   14
+ [2,]    1   15
+ [3,]    2    8
+ [4,]    2   19
+ [5,]    3   22
+ [6,]    3   23
+ [7,]    4   18
+ [8,]    4   21
+ [9,]    5   16
+[10,]    5   20
+[11,]    6   11
+[12,]    6   28
+[13,]    7   27
+[14,]    7   30
+[15,]    8   19
+[16,]    9   10
+[17,]    9   29
+[18,]   10   29
+[19,]   11   28
+[20,]   12   24
+[21,]   12   26
+[22,]   13   17
+[23,]   13   25
+[24,]   14   15
+[25,]   16   20
+[26,]   17   25
+[27,]   18   21
+[28,]   22   23
+[29,]   24   26
+[30,]   27   30</code></pre>
+<p>Now all paired comparisons that can be derived are in ascending
+order.</p>
+<p>The second way is to recode the corresponding binary indicators in
+the data, as if we flip the coding schema. We can just recode the
+variables:</p>
+<div class="sourceCode" id="cb34"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" tabindex="-1"></a><span class="co"># Get names of binary indicators that have non-ascending names</span></span>
+<span id="cb34-2"><a href="#cb34-2" tabindex="-1"></a>tmp <span class="ot">&lt;-</span> <span class="fu">which</span>(<span class="fu">pair.combn</span>(blocks)[,<span class="dv">1</span>] <span class="sc">&gt;</span> <span class="fu">pair.combn</span>(blocks)[,<span class="dv">2</span>])</span>
+<span id="cb34-3"><a href="#cb34-3" tabindex="-1"></a></span>
+<span id="cb34-4"><a href="#cb34-4" tabindex="-1"></a><span class="co"># get names</span></span>
+<span id="cb34-5"><a href="#cb34-5" tabindex="-1"></a>pair_names_b <span class="ot">&lt;-</span> <span class="fu">i.name</span>(blocks)</span>
+<span id="cb34-6"><a href="#cb34-6" tabindex="-1"></a>pair_names_ori <span class="ot">&lt;-</span> <span class="fu">i.name</span>(<span class="dv">1</span><span class="sc">:</span>nitem)</span>
+<span id="cb34-7"><a href="#cb34-7" tabindex="-1"></a></span>
+<span id="cb34-8"><a href="#cb34-8" tabindex="-1"></a><span class="co"># Rename</span></span>
+<span id="cb34-9"><a href="#cb34-9" tabindex="-1"></a>pair_names <span class="ot">&lt;-</span> <span class="fu">i.name</span>(<span class="dv">1</span><span class="sc">:</span>nitem)</span>
+<span id="cb34-10"><a href="#cb34-10" tabindex="-1"></a><span class="cf">if</span>(<span class="fu">length</span>(tmp) <span class="sc">!=</span> <span class="dv">0</span>){</span>
+<span id="cb34-11"><a href="#cb34-11" tabindex="-1"></a>  tmp1 <span class="ot">&lt;-</span> pair_names_b[tmp]</span>
+<span id="cb34-12"><a href="#cb34-12" tabindex="-1"></a>  tmp2 <span class="ot">&lt;-</span> <span class="fu">sub</span>(<span class="st">&#39;^i.+i&#39;</span>,<span class="st">&#39;i&#39;</span>, tmp1)</span>
+<span id="cb34-13"><a href="#cb34-13" tabindex="-1"></a>  tmp3 <span class="ot">&lt;-</span> tmp1</span>
+<span id="cb34-14"><a href="#cb34-14" tabindex="-1"></a>  <span class="cf">for</span>(j <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(tmp)){</span>
+<span id="cb34-15"><a href="#cb34-15" tabindex="-1"></a>    tmp3 <span class="ot">&lt;-</span> <span class="fu">paste0</span>(tmp2[j], <span class="fu">sub</span>(<span class="fu">paste0</span>(tmp2[j],<span class="st">&#39;$&#39;</span>), <span class="st">&#39;&#39;</span>, tmp1[j]))</span>
+<span id="cb34-16"><a href="#cb34-16" tabindex="-1"></a>    pair_names[<span class="fu">which</span>(pair_names <span class="sc">%in%</span> tmp3)] <span class="ot">&lt;-</span> pair_names_b[tmp[j]]</span>
+<span id="cb34-17"><a href="#cb34-17" tabindex="-1"></a>  }</span>
+<span id="cb34-18"><a href="#cb34-18" tabindex="-1"></a>}</span>
+<span id="cb34-19"><a href="#cb34-19" tabindex="-1"></a></span>
+<span id="cb34-20"><a href="#cb34-20" tabindex="-1"></a>tmp <span class="ot">&lt;-</span> <span class="fu">which</span>(<span class="sc">!</span><span class="fu">names</span>(data) <span class="sc">%in%</span> pair_names)</span>
+<span id="cb34-21"><a href="#cb34-21" tabindex="-1"></a><span class="co"># Clone data</span></span>
+<span id="cb34-22"><a href="#cb34-22" tabindex="-1"></a>data_recoded <span class="ot">&lt;-</span> data</span>
+<span id="cb34-23"><a href="#cb34-23" tabindex="-1"></a><span class="co"># Recode and rename</span></span>
+<span id="cb34-24"><a href="#cb34-24" tabindex="-1"></a>data_recoded[,tmp] <span class="ot">&lt;-</span> <span class="fu">abs</span>(data[,tmp]<span class="sc">-</span><span class="dv">1</span>)</span>
+<span id="cb34-25"><a href="#cb34-25" tabindex="-1"></a><span class="fu">names</span>(data_recoded) <span class="ot">&lt;-</span> pair_names</span></code></pre></div>
+<div class="sourceCode" id="cb35"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" tabindex="-1"></a><span class="co"># Save data</span></span>
+<span id="cb35-2"><a href="#cb35-2" tabindex="-1"></a><span class="fu">write.table</span>(data_recoded, <span class="st">&#39;myDataFile_rec.dat&#39;</span>, <span class="at">quote =</span> <span class="cn">FALSE</span>, <span class="at">sep =</span> <span class="st">&quot; &quot;</span>, <span class="at">col.names =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb35-3"><a href="#cb35-3" tabindex="-1"></a>            <span class="at">row.names =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<p>Both ways yield the same results. We have to add the argument
+<code>data_full = TRUE</code>, as we simulated all data in the data
+file, but only use some of the data. We demonstrate only the
+<code>model = &#39;irt&#39;</code> case, however, also for the CFA model types,
+these analyses can be performed (<code>model = &#39;lmean&#39;</code>,
+<code>model = &#39;uc&#39;</code>, or <code>model = &#39;simple&#39;</code>).</p>
+<div class="sourceCode" id="cb36"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" tabindex="-1"></a><span class="co"># Blocks_sorted</span></span>
+<span id="cb36-2"><a href="#cb36-2" tabindex="-1"></a><span class="co"># Mplus</span></span>
+<span id="cb36-3"><a href="#cb36-3" tabindex="-1"></a>results_mplus_b <span class="ot">&lt;-</span> <span class="fu">fit.mplus</span>(blocks_sorted, itf, <span class="at">model =</span> <span class="st">&#39;irt&#39;</span>, <span class="at">input_path =</span> <span class="st">&#39;myFC_model_bu.inp&#39;</span>,</span>
+<span id="cb36-4"><a href="#cb36-4" tabindex="-1"></a>                             <span class="at">output_path =</span> <span class="st">&quot;myFC_model_bu.out&quot;</span>, <span class="at">data_path =</span> <span class="st">&quot;myDataFile.dat&quot;</span>,</span>
+<span id="cb36-5"><a href="#cb36-5" tabindex="-1"></a>                             <span class="at">data_full =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb37"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" tabindex="-1"></a><span class="fu">unlist</span>(results_mplus_b<span class="sc">$</span>fit)</span></code></pre></div>
+<pre><code>          srmr            cfi            tli          chisq             df         pvalue 
+         0.041          1.000          1.000        356.264        375.000          0.749 
+       blchisq           bldf       blpvalue          rmsea        rmsea_p rmsea.ci.lower 
+      4171.100        435.000          0.000          0.000          1.000          0.000 
+rmsea.ci.upper 
+         0.009 </code></pre>
+<div class="sourceCode" id="cb39"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" tabindex="-1"></a><span class="co">#lavaan</span></span>
+<span id="cb39-2"><a href="#cb39-2" tabindex="-1"></a>results_lav_b <span class="ot">&lt;-</span> <span class="fu">fit.lavaan</span>(blocks_sorted, itf, <span class="at">model =</span> <span class="st">&#39;irt&#39;</span>, <span class="at">data =</span> data)</span>
+<span id="cb39-3"><a href="#cb39-3" tabindex="-1"></a>results_lav_b_fm <span class="ot">&lt;-</span> lavaan<span class="sc">::</span><span class="fu">fitmeasures</span>(results_lav_b)</span></code></pre></div>
+<div class="sourceCode" id="cb40"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" tabindex="-1"></a>results_lav_b <span class="ot">&lt;-</span> lavaan<span class="sc">::</span><span class="fu">fitmeasures</span>(results_lav_b)[<span class="fu">c</span>(<span class="st">&#39;chisq.scaled&#39;</span>,<span class="st">&#39;df.scaled&#39;</span>,<span class="st">&#39;pvalue.scaled&#39;</span>,</span>
+<span id="cb40-2"><a href="#cb40-2" tabindex="-1"></a>                                     <span class="st">&#39;rmsea.scaled&#39;</span>,<span class="st">&#39;rmsea.ci.lower.scaled&#39;</span>,<span class="st">&#39;rmsea.ci.upper.scaled&#39;</span>,</span>
+<span id="cb40-3"><a href="#cb40-3" tabindex="-1"></a>                                     <span class="st">&#39;rmsea.pvalue.scaled&#39;</span>,<span class="st">&#39;cfi.scaled&#39;</span>)]</span></code></pre></div>
+<div class="sourceCode" id="cb41"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" tabindex="-1"></a>results_lav_b</span></code></pre></div>
+<pre><code>         chisq.scaled             df.scaled         pvalue.scaled          rmsea.scaled 
+         3.560344e+02          3.750000e+02          7.517818e-01          0.000000e+00 
+rmsea.ci.lower.scaled rmsea.ci.upper.scaled   rmsea.pvalue.scaled            cfi.scaled 
+         0.000000e+00          8.660242e-03          1.000000e+00          1.000000e+00 </code></pre>
+<div class="sourceCode" id="cb43"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" tabindex="-1"></a>scores_results_lav_b <span class="ot">&lt;-</span> lavaan<span class="sc">::</span><span class="fu">lavPredict</span>(results_lav_b)</span></code></pre></div>
+<div class="sourceCode" id="cb44"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" tabindex="-1"></a><span class="co"># Recoded data</span></span>
+<span id="cb44-2"><a href="#cb44-2" tabindex="-1"></a><span class="co"># Mplus</span></span>
+<span id="cb44-3"><a href="#cb44-3" tabindex="-1"></a>results_mplus_brec <span class="ot">&lt;-</span> <span class="fu">fit.mplus</span>(blocks, itf, <span class="at">model =</span> <span class="st">&#39;irt&#39;</span>, <span class="at">input_path =</span> <span class="st">&#39;myFC_model_brecu.inp&#39;</span>,</span>
+<span id="cb44-4"><a href="#cb44-4" tabindex="-1"></a>                                <span class="at">output_path =</span> <span class="st">&quot;myFC_model_brecu.out&quot;</span>, <span class="at">data_path =</span> </span>
+<span id="cb44-5"><a href="#cb44-5" tabindex="-1"></a>                                  <span class="st">&quot;myDataFile_rec.dat&quot;</span>, <span class="at">data_full =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb45"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" tabindex="-1"></a><span class="fu">unlist</span>(results_mplus_brec<span class="sc">$</span>fit)</span></code></pre></div>
+<pre><code>          srmr            cfi            tli          chisq             df         pvalue 
+         0.041          1.000          1.000        356.264        375.000          0.749 
+       blchisq           bldf       blpvalue          rmsea        rmsea_p rmsea.ci.lower 
+      4171.100        435.000          0.000          0.000          1.000          0.000 
+rmsea.ci.upper 
+         0.009 </code></pre>
+<div class="sourceCode" id="cb47"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" tabindex="-1"></a><span class="co">#lavaan</span></span>
+<span id="cb47-2"><a href="#cb47-2" tabindex="-1"></a>results_lav_brec <span class="ot">&lt;-</span> <span class="fu">fit.lavaan</span>(blocks, itf, <span class="at">model =</span> <span class="st">&#39;irt&#39;</span>, <span class="at">data =</span> data_recoded)</span></code></pre></div>
+<div class="sourceCode" id="cb48"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" tabindex="-1"></a>results_lav_brec <span class="ot">&lt;-</span> lavaan<span class="sc">::</span><span class="fu">fitmeasures</span>(results_lav_brec)[<span class="fu">c</span>(<span class="st">&#39;chisq.scaled&#39;</span>,<span class="st">&#39;df.scaled&#39;</span>,<span class="st">&#39;pvalue.scaled&#39;</span>,</span>
+<span id="cb48-2"><a href="#cb48-2" tabindex="-1"></a>                                     <span class="st">&#39;rmsea.scaled&#39;</span>,<span class="st">&#39;rmsea.ci.lower.scaled&#39;</span>,<span class="st">&#39;rmsea.ci.upper.scaled&#39;</span>,</span>
+<span id="cb48-3"><a href="#cb48-3" tabindex="-1"></a>                                     <span class="st">&#39;rmsea.pvalue.scaled&#39;</span>,<span class="st">&#39;cfi.scaled&#39;</span>)]</span></code></pre></div>
+<div class="sourceCode" id="cb49"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" tabindex="-1"></a>results_lav_brec</span></code></pre></div>
+<pre><code>         chisq.scaled             df.scaled         pvalue.scaled          rmsea.scaled 
+         3.560344e+02          3.750000e+02          7.517822e-01          0.000000e+00 
+rmsea.ci.lower.scaled rmsea.ci.upper.scaled   rmsea.pvalue.scaled            cfi.scaled 
+         0.000000e+00          8.660236e-03          1.000000e+00          1.000000e+00 </code></pre>
+<div class="sourceCode" id="cb51"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" tabindex="-1"></a>scores_results_lav_brec <span class="ot">&lt;-</span> lavaan<span class="sc">::</span><span class="fu">lavPredict</span>(results_lav_brec)</span></code></pre></div>
+<p>In the case of blocks, we must correct the fit indices, as there are
+redundancies among the thresholds and tetrachoric correlations. The
+redundancies can be determined with the function
+<code>redundancies</code>. We can also directly correct the fit with
+<code>fit.correct</code>:</p>
+<div class="sourceCode" id="cb52"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" tabindex="-1"></a><span class="co">#save fit measures</span></span>
+<span id="cb52-2"><a href="#cb52-2" tabindex="-1"></a>tmp <span class="ot">&lt;-</span> results_lav_b_fm</span>
+<span id="cb52-3"><a href="#cb52-3" tabindex="-1"></a><span class="fu">fit.correct</span>(<span class="dv">1000</span>, blocks, tmp[<span class="st">&#39;chisq.scaled&#39;</span>], tmp[<span class="st">&#39;df.scaled&#39;</span>], tmp[<span class="st">&#39;baseline.chisq.scaled&#39;</span>],</span>
+<span id="cb52-4"><a href="#cb52-4" tabindex="-1"></a>            tmp[<span class="st">&#39;baseline.df.scaled&#39;</span>])</span></code></pre></div>
+<pre><code>df.df_corr      rmsea        cfi 
+       365          0          1 </code></pre>
+</div>
+<div id="block-designs---linked" class="section level2">
+<h2>Block designs - linked</h2>
+<p>Now, we consider linked block designs (Jansen &amp; Schulze, 2023b).
+The simplest way to construct these designs is to take the original
+unlinked design and link all blocks together (rank of the design <span class="math inline">\(r_D=N-1\)</span>, where <span class="math inline">\(N\)</span> is the number of items; Jansen &amp;
+Schulze, 2023b). The original blocks are:</p>
+<div class="sourceCode" id="cb54"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" tabindex="-1"></a>blocks</span></code></pre></div>
+<pre><code>      [,1] [,2] [,3]
+ [1,]   23   22    3
+ [2,]   14    1   15
+ [3,]    8    2   19
+ [4,]   24   26   12
+ [5,]   28   11    6
+ [6,]    4   21   18
+ [7,]   25   13   17
+ [8,]   16    5   20
+ [9,]   29    9   10
+[10,]   27    7   30</code></pre>
+<p>To get a linked design we need extra blocks. The number can be
+determined with <code>count.xblocks</code></p>
+<div class="sourceCode" id="cb56"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb56-1"><a href="#cb56-1" tabindex="-1"></a><span class="fu">count.xblocks</span>(blocks)</span></code></pre></div>
+<pre><code>[1] 5</code></pre>
+Hence, we need five extra triplets in this case. We add for example the
+following linking blocks:
+<ul>
+<li>
+block 1: 23,14,8
+</li>
+<li>
+block 2: 24,28,4
+</li>
+<li>
+block 3: 25,16,29
+</li>
+<li>
+block 4: 22,26,13
+</li>
+<li>
+block 5: 1,21,30
+</li>
+</ul>
+<div class="sourceCode" id="cb58"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb58-1"><a href="#cb58-1" tabindex="-1"></a>blocks_extra <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="fu">c</span>(<span class="dv">23</span>,<span class="dv">14</span>,<span class="dv">8</span>,<span class="dv">24</span>,<span class="dv">28</span>,<span class="dv">4</span>,<span class="dv">25</span>,<span class="dv">16</span>,<span class="dv">29</span>,<span class="dv">22</span>,<span class="dv">26</span>,<span class="dv">13</span>,<span class="dv">1</span>,<span class="dv">21</span>,<span class="dv">30</span>), <span class="at">ncol =</span> <span class="dv">3</span>, <span class="at">byrow =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb58-2"><a href="#cb58-2" tabindex="-1"></a>blocks_con <span class="ot">&lt;-</span> <span class="fu">rbind</span>(blocks, blocks_extra)</span></code></pre></div>
+<p>We can determine the rank of the design matrix with
+<code>rankA</code>:</p>
+<div class="sourceCode" id="cb59"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb59-1"><a href="#cb59-1" tabindex="-1"></a><span class="fu">rankA</span>(blocks_con)</span></code></pre></div>
+<pre><code>[1] 29</code></pre>
+<p>The rank is 30-1=29. The function <code>metablock</code> also gives a
+overview over which blocks are linked.</p>
+<div class="sourceCode" id="cb61"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb61-1"><a href="#cb61-1" tabindex="-1"></a><span class="fu">metablock</span>(blocks_con)</span></code></pre></div>
+<pre><code>[[1]]
+ [1]  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28
+[29] 29 30</code></pre>
+<p>There is only one meta block, therefore all items are linked. A
+counter example would be if we would not add block 4:</p>
+<div class="sourceCode" id="cb63"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb63-1"><a href="#cb63-1" tabindex="-1"></a>blocks_extra <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="fu">c</span>(<span class="dv">23</span>,<span class="dv">14</span>,<span class="dv">8</span>,<span class="dv">24</span>,<span class="dv">28</span>,<span class="dv">4</span>,<span class="dv">25</span>,<span class="dv">16</span>,<span class="dv">29</span>,<span class="dv">1</span>,<span class="dv">21</span>,<span class="dv">30</span>), <span class="at">ncol =</span> <span class="dv">3</span>, <span class="at">byrow =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb63-2"><a href="#cb63-2" tabindex="-1"></a>blocks_con <span class="ot">&lt;-</span> <span class="fu">rbind</span>(blocks, blocks_extra)</span></code></pre></div>
+<p>Then the rank is</p>
+<div class="sourceCode" id="cb64"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb64-1"><a href="#cb64-1" tabindex="-1"></a><span class="fu">rankA</span>(blocks_con)</span></code></pre></div>
+<pre><code>[1] 28</code></pre>
+<p>The rank is 30-1=29<span class="math inline">\(\neq\)</span> 28. And
+we have two “meta” blocks.</p>
+<div class="sourceCode" id="cb66"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb66-1"><a href="#cb66-1" tabindex="-1"></a><span class="fu">metablock</span>(blocks_con)</span></code></pre></div>
+<pre><code>[[1]]
+[1]  5  9 10 13 16 17 20 25 29
+
+[[2]]
+ [1]  1  2  3  4  6  7  8 11 12 14 15 18 19 21 22 23 24 26 27 28 30</code></pre>
+<p>Instead of manually constructing the blocks, <code>ThurMod</code>
+enables the user to get extra blocks via a function
+<code>get.xblocks</code>. We have to define if the blocks should be
+multidimensional (else <code>multidim = FALSE</code>), and if items
+should not be considered (e.g. because they are negatively keyed):</p>
+<div class="sourceCode" id="cb68"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb68-1"><a href="#cb68-1" tabindex="-1"></a>blocks_extra <span class="ot">&lt;-</span> <span class="fu">get.xblocks</span>(blocks, itf, <span class="at">multidim =</span> <span class="cn">TRUE</span>, <span class="at">item_not =</span> <span class="cn">NULL</span>)</span>
+<span id="cb68-2"><a href="#cb68-2" tabindex="-1"></a>blocks_con <span class="ot">&lt;-</span> <span class="fu">rbind</span>(blocks, blocks_extra)</span>
+<span id="cb68-3"><a href="#cb68-3" tabindex="-1"></a>blocks_con</span></code></pre></div>
+<pre><code>      [,1] [,2] [,3]
+ [1,]   23   22    3
+ [2,]   14    1   15
+ [3,]    8    2   19
+ [4,]   24   26   12
+ [5,]   28   11    6
+ [6,]    4   21   18
+ [7,]   25   13   17
+ [8,]   16    5   20
+ [9,]   29    9   10
+[10,]   27    7   30
+[11,]   23   14    2
+[12,]   12   11   18
+[13,]   17   16    9
+[14,]    7   23   26
+[15,]   20    2    9</code></pre>
+<div class="sourceCode" id="cb70"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb70-1"><a href="#cb70-1" tabindex="-1"></a>blocks_con_sorted <span class="ot">&lt;-</span> <span class="fu">blocksort</span>(blocks_con)</span></code></pre></div>
+<p>If we take the blocks as is, we need to recode the data set:</p>
+<div class="sourceCode" id="cb71"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb71-1"><a href="#cb71-1" tabindex="-1"></a><span class="co"># Get names of binary indicators that have non-ascending names</span></span>
+<span id="cb71-2"><a href="#cb71-2" tabindex="-1"></a>tmp <span class="ot">&lt;-</span> <span class="fu">which</span>(<span class="fu">pair.combn</span>(blocks_con)[,<span class="dv">1</span>] <span class="sc">&gt;</span> <span class="fu">pair.combn</span>(blocks_con)[,<span class="dv">2</span>])</span>
+<span id="cb71-3"><a href="#cb71-3" tabindex="-1"></a></span>
+<span id="cb71-4"><a href="#cb71-4" tabindex="-1"></a><span class="co"># get names</span></span>
+<span id="cb71-5"><a href="#cb71-5" tabindex="-1"></a>pair_names_b <span class="ot">&lt;-</span> <span class="fu">i.name</span>(blocks_con)</span>
+<span id="cb71-6"><a href="#cb71-6" tabindex="-1"></a>pair_names_ori <span class="ot">&lt;-</span> <span class="fu">i.name</span>(<span class="dv">1</span><span class="sc">:</span>nitem)</span>
+<span id="cb71-7"><a href="#cb71-7" tabindex="-1"></a></span>
+<span id="cb71-8"><a href="#cb71-8" tabindex="-1"></a><span class="co"># Rename</span></span>
+<span id="cb71-9"><a href="#cb71-9" tabindex="-1"></a>pair_names <span class="ot">&lt;-</span> <span class="fu">i.name</span>(<span class="dv">1</span><span class="sc">:</span>nitem)</span>
+<span id="cb71-10"><a href="#cb71-10" tabindex="-1"></a><span class="cf">if</span>(<span class="fu">length</span>(tmp)<span class="sc">!=</span><span class="dv">0</span>){</span>
+<span id="cb71-11"><a href="#cb71-11" tabindex="-1"></a>  tmp1 <span class="ot">&lt;-</span> pair_names_b[tmp]</span>
+<span id="cb71-12"><a href="#cb71-12" tabindex="-1"></a>  tmp2 <span class="ot">&lt;-</span> <span class="fu">sub</span>(<span class="st">&#39;^i.+i&#39;</span>,<span class="st">&#39;i&#39;</span>, tmp1)</span>
+<span id="cb71-13"><a href="#cb71-13" tabindex="-1"></a>  tmp3 <span class="ot">&lt;-</span> tmp1</span>
+<span id="cb71-14"><a href="#cb71-14" tabindex="-1"></a>  <span class="cf">for</span>(j <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(tmp)){</span>
+<span id="cb71-15"><a href="#cb71-15" tabindex="-1"></a>    tmp3 <span class="ot">&lt;-</span> <span class="fu">paste0</span>(tmp2[j], <span class="fu">sub</span>(<span class="fu">paste0</span>(tmp2[j],<span class="st">&#39;$&#39;</span>), <span class="st">&#39;&#39;</span>, tmp1[j]))</span>
+<span id="cb71-16"><a href="#cb71-16" tabindex="-1"></a>    pair_names[<span class="fu">which</span>(pair_names <span class="sc">%in%</span> tmp3)] <span class="ot">&lt;-</span> pair_names_b[tmp[j]]</span>
+<span id="cb71-17"><a href="#cb71-17" tabindex="-1"></a>  }</span>
+<span id="cb71-18"><a href="#cb71-18" tabindex="-1"></a>}</span>
+<span id="cb71-19"><a href="#cb71-19" tabindex="-1"></a></span>
+<span id="cb71-20"><a href="#cb71-20" tabindex="-1"></a>tmp <span class="ot">&lt;-</span> <span class="fu">which</span>(<span class="sc">!</span><span class="fu">names</span>(data) <span class="sc">%in%</span> pair_names)</span>
+<span id="cb71-21"><a href="#cb71-21" tabindex="-1"></a><span class="co"># Clone data</span></span>
+<span id="cb71-22"><a href="#cb71-22" tabindex="-1"></a>data_recoded <span class="ot">&lt;-</span> data</span>
+<span id="cb71-23"><a href="#cb71-23" tabindex="-1"></a><span class="co"># Recode and rename</span></span>
+<span id="cb71-24"><a href="#cb71-24" tabindex="-1"></a>data_recoded[,tmp] <span class="ot">&lt;-</span> <span class="fu">abs</span>(data[,tmp]<span class="sc">-</span><span class="dv">1</span>)</span>
+<span id="cb71-25"><a href="#cb71-25" tabindex="-1"></a><span class="fu">names</span>(data_recoded) <span class="ot">&lt;-</span> pair_names</span></code></pre></div>
+<div class="sourceCode" id="cb72"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb72-1"><a href="#cb72-1" tabindex="-1"></a><span class="co"># Save data</span></span>
+<span id="cb72-2"><a href="#cb72-2" tabindex="-1"></a><span class="fu">write.table</span>(data_recoded, <span class="st">&#39;myDataFile_rec.dat&#39;</span>, <span class="at">quote =</span> <span class="cn">FALSE</span>, <span class="at">sep =</span> <span class="st">&quot; &quot;</span>, <span class="at">col.names =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb72-3"><a href="#cb72-3" tabindex="-1"></a>            <span class="at">row.names =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<p>The estimation of linked designs is done equivalent via</p>
+<div class="sourceCode" id="cb73"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb73-1"><a href="#cb73-1" tabindex="-1"></a><span class="co"># Blocks_sorted</span></span>
+<span id="cb73-2"><a href="#cb73-2" tabindex="-1"></a><span class="co"># Mplus</span></span>
+<span id="cb73-3"><a href="#cb73-3" tabindex="-1"></a>results_mplus_bc <span class="ot">&lt;-</span> <span class="fu">fit.mplus</span>(blocks_con_sorted,itf,<span class="at">model=</span><span class="st">&#39;irt&#39;</span>,<span class="at">input_path=</span><span class="st">&#39;myFC_model_b_con.inp&#39;</span>,</span>
+<span id="cb73-4"><a href="#cb73-4" tabindex="-1"></a>                             <span class="at">output_path=</span><span class="st">&quot;myFC_model_b_con.out&quot;</span>,<span class="at">data_path=</span><span class="st">&quot;myDataFile.dat&quot;</span>,</span>
+<span id="cb73-5"><a href="#cb73-5" tabindex="-1"></a>                             <span class="at">data_full =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb74"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb74-1"><a href="#cb74-1" tabindex="-1"></a><span class="fu">unlist</span>(results_mplus_bc<span class="sc">$</span>fit)</span></code></pre></div>
+<pre><code>          srmr            cfi            tli          chisq             df         pvalue 
+        0.0430         1.0000         1.0000       886.7800       921.0000         0.7858 
+       blchisq           bldf       blpvalue          rmsea        rmsea_p rmsea.ci.lower 
+    10190.6740       990.0000         0.0000         0.0000         1.0000         0.0000 
+rmsea.ci.upper 
+        0.0060 </code></pre>
+<div class="sourceCode" id="cb76"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb76-1"><a href="#cb76-1" tabindex="-1"></a><span class="co">#lavaan</span></span>
+<span id="cb76-2"><a href="#cb76-2" tabindex="-1"></a>results_lav_bc <span class="ot">&lt;-</span> <span class="fu">fit.lavaan</span>(blocks_con_sorted, itf, <span class="at">model =</span> <span class="st">&#39;irt&#39;</span>, <span class="at">data =</span> data)</span>
+<span id="cb76-3"><a href="#cb76-3" tabindex="-1"></a>results_lav_bc_fm <span class="ot">&lt;-</span> lavaan<span class="sc">::</span><span class="fu">fitmeasures</span>(results_lav_bc)</span></code></pre></div>
+<div class="sourceCode" id="cb77"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb77-1"><a href="#cb77-1" tabindex="-1"></a>results_lav_bc <span class="ot">&lt;-</span> lavaan<span class="sc">::</span><span class="fu">fitmeasures</span>(results_lav_bc)[<span class="fu">c</span>(<span class="st">&#39;chisq.scaled&#39;</span>,<span class="st">&#39;df.scaled&#39;</span>,<span class="st">&#39;pvalue.scaled&#39;</span>,</span>
+<span id="cb77-2"><a href="#cb77-2" tabindex="-1"></a>                                     <span class="st">&#39;rmsea.scaled&#39;</span>,<span class="st">&#39;rmsea.ci.lower.scaled&#39;</span>,<span class="st">&#39;rmsea.ci.upper.scaled&#39;</span>,</span>
+<span id="cb77-3"><a href="#cb77-3" tabindex="-1"></a>                                     <span class="st">&#39;rmsea.pvalue.scaled&#39;</span>,<span class="st">&#39;cfi.scaled&#39;</span>)]</span></code></pre></div>
+<div class="sourceCode" id="cb78"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb78-1"><a href="#cb78-1" tabindex="-1"></a>results_lav_bc</span></code></pre></div>
+<pre><code>         chisq.scaled             df.scaled         pvalue.scaled          rmsea.scaled 
+         8.863299e+02          9.210000e+02          7.888948e-01          0.000000e+00 
+rmsea.ci.lower.scaled rmsea.ci.upper.scaled   rmsea.pvalue.scaled            cfi.scaled 
+         0.000000e+00          6.388203e-03          1.000000e+00          1.000000e+00 </code></pre>
+<div class="sourceCode" id="cb80"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb80-1"><a href="#cb80-1" tabindex="-1"></a>scores_results_lav_bc <span class="ot">&lt;-</span> lavaan<span class="sc">::</span><span class="fu">lavPredict</span>(results_lav_bc)</span></code></pre></div>
+<div class="sourceCode" id="cb81"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb81-1"><a href="#cb81-1" tabindex="-1"></a><span class="co"># Recoded data</span></span>
+<span id="cb81-2"><a href="#cb81-2" tabindex="-1"></a><span class="co"># Mplus</span></span>
+<span id="cb81-3"><a href="#cb81-3" tabindex="-1"></a>results_mplus_bcrec <span class="ot">&lt;-</span> <span class="fu">fit.mplus</span>(blocks_con, itf, <span class="at">model =</span> <span class="st">&#39;irt&#39;</span>, <span class="at">input_path =</span> <span class="st">&#39;myFC_model_brec.inp&#39;</span>,</span>
+<span id="cb81-4"><a href="#cb81-4" tabindex="-1"></a>                                <span class="at">output_path =</span> <span class="st">&quot;myFC_model_brec.out&quot;</span>,<span class="at">data_path =</span></span>
+<span id="cb81-5"><a href="#cb81-5" tabindex="-1"></a>                                  <span class="st">&quot;myDataFile_rec.dat&quot;</span>,<span class="at">data_full =</span> <span class="cn">TRUE</span>, <span class="at">byblock =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb82"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb82-1"><a href="#cb82-1" tabindex="-1"></a><span class="fu">unlist</span>(results_mplus_bcrec<span class="sc">$</span>fit)</span></code></pre></div>
+<pre><code>          srmr            cfi            tli          chisq             df         pvalue 
+        0.0430         1.0000         1.0000       886.1220       920.0000         0.7835 
+       blchisq           bldf       blpvalue          rmsea        rmsea_p rmsea.ci.lower 
+    10190.6740       990.0000         0.0000         0.0000         1.0000         0.0000 
+rmsea.ci.upper 
+        0.0060 </code></pre>
+<div class="sourceCode" id="cb84"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb84-1"><a href="#cb84-1" tabindex="-1"></a><span class="co">#lavaan</span></span>
+<span id="cb84-2"><a href="#cb84-2" tabindex="-1"></a>results_lav_bcrec <span class="ot">&lt;-</span> <span class="fu">fit.lavaan</span>(blocks_con, itf, <span class="at">model =</span> <span class="st">&#39;irt&#39;</span>, <span class="at">data =</span> data_recoded)</span></code></pre></div>
+<div class="sourceCode" id="cb85"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb85-1"><a href="#cb85-1" tabindex="-1"></a>results_lav_bcrec <span class="ot">&lt;-</span> lavaan<span class="sc">::</span><span class="fu">fitmeasures</span>(results_lav_bcrec)[<span class="fu">c</span>(<span class="st">&#39;chisq.scaled&#39;</span>,<span class="st">&#39;df.scaled&#39;</span>,<span class="st">&#39;pvalue.scaled&#39;</span>,</span>
+<span id="cb85-2"><a href="#cb85-2" tabindex="-1"></a>                                     <span class="st">&#39;rmsea.scaled&#39;</span>,<span class="st">&#39;rmsea.ci.lower.scaled&#39;</span>,<span class="st">&#39;rmsea.ci.upper.scaled&#39;</span>,</span>
+<span id="cb85-3"><a href="#cb85-3" tabindex="-1"></a>                                     <span class="st">&#39;rmsea.pvalue.scaled&#39;</span>,<span class="st">&#39;cfi.scaled&#39;</span>)]</span></code></pre></div>
+<div class="sourceCode" id="cb86"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb86-1"><a href="#cb86-1" tabindex="-1"></a>results_lav_bcrec</span></code></pre></div>
+<pre><code>         chisq.scaled             df.scaled         pvalue.scaled          rmsea.scaled 
+         8.856718e+02          9.200000e+02          7.866540e-01          0.000000e+00 
+rmsea.ci.lower.scaled rmsea.ci.upper.scaled   rmsea.pvalue.scaled            cfi.scaled 
+         0.000000e+00          6.419601e-03          1.000000e+00          1.000000e+00 </code></pre>
+<div class="sourceCode" id="cb88"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb88-1"><a href="#cb88-1" tabindex="-1"></a>scores_results_lav_bcrec <span class="ot">&lt;-</span> lavaan<span class="sc">::</span><span class="fu">lavPredict</span>(results_lav_bcrec)</span></code></pre></div>
+<p>Here, we also must correct the fit indices, as there are redundancies
+among the thresholds and tetrachoric correlations. Again, the
+redundancies can be determined with the function
+<code>redundancies</code>. We directly correct the fit with
+<code>fit.correct</code>:</p>
+<div class="sourceCode" id="cb89"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb89-1"><a href="#cb89-1" tabindex="-1"></a><span class="co">#save fit measures</span></span>
+<span id="cb89-2"><a href="#cb89-2" tabindex="-1"></a>tmp <span class="ot">&lt;-</span> results_lav_bc_fm</span>
+<span id="cb89-3"><a href="#cb89-3" tabindex="-1"></a><span class="fu">fit.correct</span>(<span class="dv">1000</span>, blocks_con, tmp[<span class="st">&#39;chisq.scaled&#39;</span>], tmp[<span class="st">&#39;df.scaled&#39;</span>], tmp[<span class="st">&#39;baseline.chisq.scaled&#39;</span>],</span>
+<span id="cb89-4"><a href="#cb89-4" tabindex="-1"></a>            tmp[<span class="st">&#39;baseline.df.scaled&#39;</span>])</span></code></pre></div>
+<pre><code>df.df_corr      rmsea        cfi 
+       906          0          1 </code></pre>
+</div>
+<div id="simulating-only-relevant-data" class="section level2">
+<h2>Simulating only relevant data</h2>
+<p>The estimation of a full design will most likely seldom be of
+interest. More likely, (linked) block designs are of interest.
+Especially for simulations with many items (more than 50), many binary
+variables are simulated and saved. While the simulation of all items is
+important (see Jansen &amp; Schulze, 2023b), saving all items is not.
+<code>sim.data</code> can also return only items that are of relevance.
+For that we need to specify the argument <code>variables</code>. Assume
+we have the linked block design we specified before. We only have to
+give the item names of the sorted blocks and define it as the
+<code>variables</code> argument:</p>
+<div class="sourceCode" id="cb91"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb91-1"><a href="#cb91-1" tabindex="-1"></a><span class="co">#Get the relevant names</span></span>
+<span id="cb91-2"><a href="#cb91-2" tabindex="-1"></a>tmp_names <span class="ot">&lt;-</span> <span class="fu">i.name</span>(blocks_con_sorted)</span>
+<span id="cb91-3"><a href="#cb91-3" tabindex="-1"></a></span>
+<span id="cb91-4"><a href="#cb91-4" tabindex="-1"></a><span class="co">#same example as before</span></span>
+<span id="cb91-5"><a href="#cb91-5" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">1234</span>)</span>
+<span id="cb91-6"><a href="#cb91-6" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">sim.data</span>(<span class="at">nfactor =</span> nfactor, <span class="at">nitem =</span> nitem, <span class="at">nperson =</span> nperson, <span class="at">itf =</span> itf, <span class="at">varcov =</span> varcov,</span>
+<span id="cb91-7"><a href="#cb91-7" tabindex="-1"></a>                 <span class="at">lmu =</span> lmu, <span class="at">loadings =</span> loadings, <span class="at">variables =</span> tmp_names)</span></code></pre></div>
+<div class="sourceCode" id="cb92"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb92-1"><a href="#cb92-1" tabindex="-1"></a><span class="co">#save the file</span></span>
+<span id="cb92-2"><a href="#cb92-2" tabindex="-1"></a><span class="fu">write.table</span>(data, <span class="st">&#39;myDataFile.dat&#39;</span>, <span class="at">quote =</span> <span class="cn">FALSE</span>, <span class="at">sep =</span> <span class="st">&quot; &quot;</span>, <span class="at">col.names =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb92-3"><a href="#cb92-3" tabindex="-1"></a>            <span class="at">row.names =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<p>For the Mplus analysis, the argument <code>data_full</code> must then
+be set to <code>FALSE</code>.</p>
+<p>Taken together, we have demonstrated the basic steps on how to use
+the functions given by <code>ThurMod</code>. Please report any bugs. If
+you miss functions that could be helpful for the analysis of Thurstonian
+forced-choice data, please let me know.</p>
+</div>
+</div>
+<div id="references" class="section level1">
+<h1>References</h1>
+<p>Brown, A., &amp; Maydeu-Olivares, A. (2011). Item response modeling
+of forced-choice questionnaires. <i>Educational and Psychological
+Measurement</i>, <i>71</i>(3), 460-502.
+<a href="https://doi.org/10.1177/0013164410375112">https://doi.org/10.1177/0013164410375112</a></p>
+<p>Jansen, M. T., &amp; Schulze, R. (2023a). <i>Item scaling of social
+desirability using conjoint measurement: A comparison of ratings, paired
+comparisons, and rankings</i>. Manuscript in preparation.</p>
+<p>Jansen, M. T., &amp; Schulze, R. (in press). <i>The Thurstonian
+linked bock design: Improving Thurstonian modeling for paired comparison
+and ranking data</i>. Educational and Psychological Measurement.</p>
+<p>Maydeu-Olivares, A., &amp; Böckenholt, U. (2005). Structural equation
+modeling of paired-comparison and ranking data. <i>Psychological
+Methods</i>, <i>10</i>(3), 285–304.
+<a href="https://doi.org/10.1037/1082-989X.10.3.285">https://doi.org/10.1037/1082-989X.10.3.285</a></p>
+<p>Maydeu-Olivares, A., &amp; Brown, A. (2010). Item response modeling
+of paired comparison and ranking data. <i>Multivariate Behavioural
+Research</i>, <i>45</i>(6), 935-974.
+<a href="https://doi.org/10.1080/00273171.2010.531231">https://doi.org/10.1080/00273171.2010.531231</a></p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

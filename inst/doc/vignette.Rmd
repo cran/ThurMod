@@ -1,0 +1,537 @@
+---
+title: "Simulating data and estimating Thurstonian IRT and factor models with ThurMod"
+author: "Markus Thomas Jansen"
+date: "`r Sys.Date()`"
+output:
+  rmarkdown::html_vignette:
+  toc: yes
+vignette: >
+  %\VignetteIndexEntry{Simulating data and estimating Thurstonian IRT and factor models with ThurMod}
+  \usepackage[utf8]{inputenc}
+  %\VignetteEngine{knitr::rmarkdown}
+params:
+  EVAL: !r identical(Sys.getenv("NOT_CRAN"), "true")
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, SETTINGS-knitr, include=FALSE}
+stopifnot(require(knitr))
+options(width = 90)
+opts_chunk$set(
+  comment = NA,
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+# Introduction
+
+In this vignette, the basic procedures in data-handling, simulation and estimation with the package `ThurMod` are performed. For the moment, we separate two different model types:
+ <ul>
+  <li>A Thurstonian factor model</li>
+  <li>A Thurstonian IRT model</li>
+</ul> 
+
+The Thurstonian factor model was introduced by Maydeu-Olivares \& Böckenholt (2005), the Thurstonian IRT model was introduced by Maydeu-Olivares \& Brown (2010). For a review see Jansen \& Schulze (2023a). For further extensions and discussion about the model types see Jansen \& Schulze (2023b). For example, the factor and IRT model both can be further differentiated. For the differentiation we use the design matrix $A$ which represents all paired comparisons of a design. For a design of four items, this would be
+```{r, echo=FALSE}
+library(ThurMod)
+designA(4)
+```
+
+```{r, echo=FALSE}
+load("4v.RData")
+```
+
+
+The design matrix can be (Jansen \& Schulze, 2023b):
+
+ <ul>
+  <li>A <b>full</b> matrix, that is all possible paired comparisons are considered</li>
+  <li>An <b>unlinked block</b> matrix, where only blocks of items and the respective paired comparisons are considered </li>
+  <li>A <b>partially linked block</b> matrix, where some of the blocks are linked</li>
+  <li>A <b>complete linked block</b> matrix, where all of the blocks are linked</li>
+  <li>Anything in between of the other models</li>
+</ul> 
+
+# Examples
+
+First, we will load the package required in the vignette.
+```{r}
+library(ThurMod)
+```
+
+The next step is to define the model we are interested in. For this we have to define the following aspects:
+ <ul>
+  <li>the number of factors of the model</li>
+  <li>the number of items of the model</li>
+  <li>the item-to-factor relations</li>
+</ul> 
+
+We consider a model with four factors (traits), measured by 12 items. The item-to-factor relations are defined so that 
+ <ul>
+  <li>items 1, 5, 9 measure factor 1</li>
+  <li>items 2, 6, 10 measure factor 2</li>
+  <li>items 3, 7, 11 measure factor 3</li>
+  <li>items 4, 8, 12 measure factor 4.</li>
+</ul> 
+
+Further we simulate data of 1000 respondents with loadings between .30 and .95 and latent utility means between -1 and 1. We assume that the data results from rankings, that is that transitivity between responses holds (the variance of the binary indicators is zero). Further, we assume uncorrelated data. We will simulate the data of all paired comparisons possible (see Jansen \& Schulze, 2023b).
+
+Set up the simulation conditions:
+```{r}
+nfactor <- 4
+nitem <- 12
+nperson <- 1000
+itf <- rep(1:4, 3)
+varcov <- diag(1, 4)
+
+# latent utility means
+set.seed(69)
+lmu <- runif(nitem, -1, 1)
+loadings <- runif(nitem, 0.30, 0.95)
+```
+
+Next, we simulate a data set based on the true parameter values:
+```{r}
+data <- sim.data(nfactor = nfactor, nitem = nitem, nperson = nperson, itf = itf,
+                 varcov = varcov, lmu = lmu, loadings = loadings)
+
+#save the file
+write.table(data, paste0(tempdir(),'/','myDataFile_f.dat'), quote = FALSE, 
+            sep = " ", col.names = FALSE, row.names = FALSE)
+```
+
+The data set contains all (12 \times 11)/2 = 66 possible paired comparison variables. With this data set we will perform analyses of the full design (IRT, CFA).
+
+## Full design
+
+Full designs include all paired comparisons. The estimation of these designs can take a while, as with categorical data a large correlations matrix must be estimated.
+
+For all functions, the blocks we use must be defined. In a full design, there is only one block with all items:
+```{r}
+blocks <- matrix(1:nitem, nrow = 1)
+```
+The `blocks` must be defined as a matrix where the rows correspond to each block. Only for a full design, a vector, for example, `1:12` would work.
+
+### Thurstonian factor models
+We will analyse the data with Mplus and `lavaan`. We can do this in two ways: First, in three separate steps, second, directly.
+
+Way 1, step 1: Build syntax
+```{r, eval =FALSE}
+# Mplus
+syntax.mplus(blocks, itf, model = 'lmean', input_path = 'myFC_model_f.inp', data_path = 
+               "myDataFile_f.dat")
+```
+```{r}
+#lavaan
+modelsyn <- syntax.lavaan(blocks, itf, model = 'lmean')
+```
+For step 2, now these syntaxes must be run (evaluation will not be performed here):
+```{r, eval = FALSE}
+# Mplus
+system('mplus myFC_model_f.inp', wait = TRUE, show.output.on.console= FALSE)
+```
+```{r, eval = FALSE}
+#lavaan
+results_lav1 <- lavaan::lavaan(modelsyn, data = data, ordered = TRUE, auto.fix.first = FALSE,
+                      auto.var = TRUE, int.lv.free = TRUE, parameterization = "theta",
+                      estimator = 'ULSMV')
+```
+If you replicate this, be patient, it can take about 20 minutes each, depending on your processing power. 
+
+Step 3: Read results. For Mplus you can either open the output file, or use `read.mplus`
+```{r,eval = FALSE}
+# Mplus
+results_mplus1 <- read.mplus(blocks, itf, model = 'lmean', output_path = "myFC_model_f.out")
+```
+```{r}
+unlist(results_mplus1$fit)
+```
+```{r, eval = FALSE}
+results_lav1 <- lavaan::fitmeasures(results_lav1)[c('chisq.scaled','df.scaled','pvalue.scaled',
+                                     'rmsea.scaled','rmsea.ci.lower.scaled','rmsea.ci.upper.scaled',
+                                     'rmsea.pvalue.scaled','cfi.scaled')]
+```
+```{r}
+results_lav1
+```
+
+The second way is to use `fit_mplus` or `fit_lavaan`, each function does the above steps at once:
+```{r, eval = FALSE}
+# Mplus
+results_mplus2 <- fit.mplus(blocks, itf, model = 'lmean', input_path = 'myFC_model_f.inp',
+                            output_path = "myFC_model_f.out", data_path = "myDataFile_f.dat")
+```
+```{r, eval =  FALSE}
+#lavaan
+results_lav2 <- fit.lavaan(blocks, itf, model = 'lmean', data = data)
+lavaan::fitmeasures(results_lav2)[c('rmsea.scaled','rmsea.ci.lower.scaled','rmsea.ci.upper.scaled',
+                                    'rmsea.pvalue.scaled','cfi.scaled')]
+```
+
+### Thurstonian IRT models
+For IRT models, the procedure is the same, just change `model = 'lmean'` to `model = 'irt'`, for example
+```{r, eval = FALSE}
+# Mplus
+results_mplus2irt <- fit.mplus(blocks, itf, model = 'irt', input_path = 'myFC_model_irt.inp',
+                               output_path = "myFC_model_irt.out", data_path = "myDataFile_f.dat")
+```
+```{r}
+unlist(results_mplus2irt$fit)
+```
+```{r, eval = FALSE}
+#lavaan
+results_lav2irt <- fit.lavaan(blocks, itf, model = 'irt', data = data)
+```
+```{r, eval = FALSE}
+results_lav2irt <- lavaan::fitmeasures(results_lav2irt)[c('chisq.scaled','df.scaled','pvalue.scaled',
+                                     'rmsea.scaled','rmsea.ci.lower.scaled','rmsea.ci.upper.scaled',
+                                     'rmsea.pvalue.scaled','cfi.scaled')]
+```
+```{r}
+results_lav2irt
+```
+```{r, eval = FALSE}
+scores_results_lav2irt <- lavaan::lavPredict(results_lav2irt)
+```
+
+## Block designs - unlinked
+The first block designs were introduced as multidimensional forced-choice blocks (Brown \& Maydeu-Olivares, 2011). However, it was shown that the designs must neither be multidimensional, nor must every paired comparison only be contained once (Jansen \& Schulze, 2023b).
+
+We first simulate a new data set. Set up the simulation conditions:
+```{r}
+nfactor <- 5
+nitem <- 30
+nperson <- 1000
+itf <- rep(1:5, 6)
+varcov <- diag(1, 5)
+
+# latent utility means
+set.seed(69)
+lmu <- runif(nitem, -1, 1)
+loadings <- runif(nitem, 0.30, 0.95)
+```
+
+Next, we simulate a data set based on the true parameter values:
+```{r}
+set.seed(1234)
+data <- sim.data(nfactor = nfactor, nitem = nitem, nperson = nperson, itf = itf, varcov = varcov,
+                 lmu = lmu, loadings = loadings)
+```
+```{r, eval = FALSE}
+#save the file
+write.table(data,'myDataFile.dat', quote = FALSE, sep = " ", col.names = FALSE, row.names = FALSE)
+```
+
+Next, we consider unlinked blocks of three items (triplets):
+```{r}
+blocks <- matrix(sample(1:nitem, nitem), ncol = 3)
+```
+The blocks are defined by a matrix where the rows are the blocks and the number of columns is the number of items per block. Before we can fit the model, we must ensure that the data fits to the syntax we create. The data simulated before assumes that all items are in ascending order. This is important, as the order of the items determine the coding. We code binary items as
+\begin{equation}
+   y_{l} =
+   \begin{cases}
+     1 & \text{if item $i$ is chosen over item $j$} \\
+     0 & \text{else} .\\
+   \end{cases}
+\end{equation}
+In a ranking task, all choice alternatives are presented at once, but for each possible comparison, the coding scheme can be used. For example, consider $n = 3$ items which are labeled as {A, B, C}. Then we have the pairs {A, B}, {A, C}, {B, C}. If for {A, B} A is preferred over B then $y_{A,B}=1$ and 0 otherwise. This can be done for every paired comparison and ranking task (Maydeu-Olivares \& Böckenholt, 2005): For {A,C,B} the binary outcomes are $y_{A,B}=1$, $y_{A,C}=1$, and $y_{B,C}=0$. However, if the order of the binary item is changed, then the coding is changed accordingly, e.g. $y_{B,A}=0$, $y_{C,A}=0$, and $y_{C,B}=1$.
+
+We can get an overview over all possible comparisons by the block design, by using `pair.combn`:
+```{r}
+pair.combn(blocks)
+```
+
+See that we have some items, that are not in ascending order. The data simulated assumes, that the first named item (item $i$) has a smaller number e.g., i3i9. The blocks we created however, have some comparisons, where the first items have a larger number e.g. i9i3. There are two ways to fit the syntax to the data: First, we can simply sort the blocks via `blocksort`:
+
+```{r}
+blocks_sorted <- blocksort(blocks)
+pair.combn(blocks_sorted)
+```
+
+Now all paired comparisons that can be derived are in ascending order. 
+
+The second way is to recode the corresponding binary indicators in the data, as if we flip the coding schema. We can just recode the variables:
+```{r}
+# Get names of binary indicators that have non-ascending names
+tmp <- which(pair.combn(blocks)[,1] > pair.combn(blocks)[,2])
+
+# get names
+pair_names_b <- i.name(blocks)
+pair_names_ori <- i.name(1:nitem)
+
+# Rename
+pair_names <- i.name(1:nitem)
+if(length(tmp) != 0){
+  tmp1 <- pair_names_b[tmp]
+  tmp2 <- sub('^i.+i','i', tmp1)
+  tmp3 <- tmp1
+  for(j in 1:length(tmp)){
+    tmp3 <- paste0(tmp2[j], sub(paste0(tmp2[j],'$'), '', tmp1[j]))
+    pair_names[which(pair_names %in% tmp3)] <- pair_names_b[tmp[j]]
+  }
+}
+
+tmp <- which(!names(data) %in% pair_names)
+# Clone data
+data_recoded <- data
+# Recode and rename
+data_recoded[,tmp] <- abs(data[,tmp]-1)
+names(data_recoded) <- pair_names
+
+```
+```{r, eval = FALSE}
+# Save data
+write.table(data_recoded, 'myDataFile_rec.dat', quote = FALSE, sep = " ", col.names = FALSE,
+            row.names = FALSE)
+```
+
+Both ways yield the same results. We have to add the argument `data_full = TRUE`, as we simulated all data in the data file, but only use some of the data. We demonstrate only the `model = 'irt'` case, however, also for the CFA model types, these analyses can be performed (`model = 'lmean'`, `model = 'uc'`, or `model = 'simple'`).
+```{r, eval = FALSE}
+# Blocks_sorted
+# Mplus
+results_mplus_b <- fit.mplus(blocks_sorted, itf, model = 'irt', input_path = 'myFC_model_bu.inp',
+                             output_path = "myFC_model_bu.out", data_path = "myDataFile.dat",
+                             data_full = TRUE)
+```
+```{r}
+unlist(results_mplus_b$fit)
+```
+```{r, eval = FALSE}
+#lavaan
+results_lav_b <- fit.lavaan(blocks_sorted, itf, model = 'irt', data = data)
+results_lav_b_fm <- lavaan::fitmeasures(results_lav_b)
+```
+```{r, eval = FALSE}
+results_lav_b <- lavaan::fitmeasures(results_lav_b)[c('chisq.scaled','df.scaled','pvalue.scaled',
+                                     'rmsea.scaled','rmsea.ci.lower.scaled','rmsea.ci.upper.scaled',
+                                     'rmsea.pvalue.scaled','cfi.scaled')]
+```
+```{r}
+results_lav_b
+```
+```{r, eval = FALSE}
+scores_results_lav_b <- lavaan::lavPredict(results_lav_b)
+```
+
+```{r eval = FALSE}
+# Recoded data
+# Mplus
+results_mplus_brec <- fit.mplus(blocks, itf, model = 'irt', input_path = 'myFC_model_brecu.inp',
+                                output_path = "myFC_model_brecu.out", data_path = 
+                                  "myDataFile_rec.dat", data_full = TRUE)
+```
+```{r}
+unlist(results_mplus_brec$fit)
+```
+```{r, eval = FALSE}
+#lavaan
+results_lav_brec <- fit.lavaan(blocks, itf, model = 'irt', data = data_recoded)
+```
+```{r, eval = FALSE}
+results_lav_brec <- lavaan::fitmeasures(results_lav_brec)[c('chisq.scaled','df.scaled','pvalue.scaled',
+                                     'rmsea.scaled','rmsea.ci.lower.scaled','rmsea.ci.upper.scaled',
+                                     'rmsea.pvalue.scaled','cfi.scaled')]
+```
+```{r}
+results_lav_brec
+```
+```{r, eval = FALSE}
+scores_results_lav_brec <- lavaan::lavPredict(results_lav_brec)
+```
+
+In the case of blocks, we must correct the fit indices, as there are redundancies among the thresholds and tetrachoric correlations. The redundancies can be determined with the function `redundancies`. We can also directly correct the fit with `fit.correct`:
+```{r}
+#save fit measures
+tmp <- results_lav_b_fm
+fit.correct(1000, blocks, tmp['chisq.scaled'], tmp['df.scaled'], tmp['baseline.chisq.scaled'],
+            tmp['baseline.df.scaled'])
+```
+
+
+## Block designs - linked
+Now, we consider linked block designs (Jansen \& Schulze, 2023b). The simplest way to construct these designs is to take the original unlinked design and link all blocks together (rank of the design $r_D=N-1$, where $N$ is the number of items; Jansen \& Schulze, 2023b). The original blocks are:
+```{r}
+blocks
+```
+
+To get a linked design we need extra blocks. The number can be determined with `count.xblocks`
+```{r}
+count.xblocks(blocks)
+```
+Hence, we need five extra triplets in this case. We add for example the following linking blocks:
+ <ul>
+  <li>block 1: 23,14,8</li>
+  <li>block 2: 24,28,4</li>
+  <li>block 3: 25,16,29</li>
+  <li>block 4: 22,26,13</li>
+  <li>block 5: 1,21,30</li>
+</ul> 
+
+```{r}
+blocks_extra <- matrix(c(23,14,8,24,28,4,25,16,29,22,26,13,1,21,30), ncol = 3, byrow = TRUE)
+blocks_con <- rbind(blocks, blocks_extra)
+```
+
+We can determine the rank of the design matrix with `rankA`:
+```{r}
+rankA(blocks_con)
+```
+The rank is 30-1=29. The function `metablock` also gives a overview over which blocks are linked.
+```{r}
+metablock(blocks_con)
+```
+There is only one meta block, therefore all items are linked. A counter example would be if we would not add block 4:
+
+```{r}
+blocks_extra <- matrix(c(23,14,8,24,28,4,25,16,29,1,21,30), ncol = 3, byrow = TRUE)
+blocks_con <- rbind(blocks, blocks_extra)
+```
+
+Then the rank is
+```{r}
+rankA(blocks_con)
+```
+The rank is 30-1=29$\neq$ 28. And we have two "meta" blocks.
+```{r}
+metablock(blocks_con)
+```
+
+Instead of manually constructing the blocks, `ThurMod` enables the user to get extra blocks via a function `get.xblocks`. We have to define if the blocks should be multidimensional (else `multidim = FALSE`), and if items should not be considered (e.g. because they are negatively keyed):
+```{r}
+blocks_extra <- get.xblocks(blocks, itf, multidim = TRUE, item_not = NULL)
+blocks_con <- rbind(blocks, blocks_extra)
+blocks_con
+blocks_con_sorted <- blocksort(blocks_con)
+```
+
+If we take the blocks as is, we need to recode the data set:
+```{r}
+# Get names of binary indicators that have non-ascending names
+tmp <- which(pair.combn(blocks_con)[,1] > pair.combn(blocks_con)[,2])
+
+# get names
+pair_names_b <- i.name(blocks_con)
+pair_names_ori <- i.name(1:nitem)
+
+# Rename
+pair_names <- i.name(1:nitem)
+if(length(tmp)!=0){
+  tmp1 <- pair_names_b[tmp]
+  tmp2 <- sub('^i.+i','i', tmp1)
+  tmp3 <- tmp1
+  for(j in 1:length(tmp)){
+    tmp3 <- paste0(tmp2[j], sub(paste0(tmp2[j],'$'), '', tmp1[j]))
+    pair_names[which(pair_names %in% tmp3)] <- pair_names_b[tmp[j]]
+  }
+}
+
+tmp <- which(!names(data) %in% pair_names)
+# Clone data
+data_recoded <- data
+# Recode and rename
+data_recoded[,tmp] <- abs(data[,tmp]-1)
+names(data_recoded) <- pair_names
+``` 
+```{r, eval = FALSE}
+# Save data
+write.table(data_recoded, 'myDataFile_rec.dat', quote = FALSE, sep = " ", col.names = FALSE,
+            row.names = FALSE)
+```
+
+The estimation of linked designs is done equivalent via
+```{r, eval = FALSE}
+# Blocks_sorted
+# Mplus
+results_mplus_bc <- fit.mplus(blocks_con_sorted,itf,model='irt',input_path='myFC_model_b_con.inp',
+                             output_path="myFC_model_b_con.out",data_path="myDataFile.dat",
+                             data_full = TRUE)
+```
+```{r}
+unlist(results_mplus_bc$fit)
+```
+```{r, eval = FALSE}
+#lavaan
+results_lav_bc <- fit.lavaan(blocks_con_sorted, itf, model = 'irt', data = data)
+results_lav_bc_fm <- lavaan::fitmeasures(results_lav_bc)
+```
+```{r, eval = FALSE}
+results_lav_bc <- lavaan::fitmeasures(results_lav_bc)[c('chisq.scaled','df.scaled','pvalue.scaled',
+                                     'rmsea.scaled','rmsea.ci.lower.scaled','rmsea.ci.upper.scaled',
+                                     'rmsea.pvalue.scaled','cfi.scaled')]
+```
+```{r}
+results_lav_bc
+```
+```{r, eval = FALSE}
+scores_results_lav_bc <- lavaan::lavPredict(results_lav_bc)
+```
+
+```{r eval = FALSE}
+# Recoded data
+# Mplus
+results_mplus_bcrec <- fit.mplus(blocks_con, itf, model = 'irt', input_path = 'myFC_model_brec.inp',
+                                output_path = "myFC_model_brec.out",data_path =
+                                  "myDataFile_rec.dat",data_full = TRUE, byblock = FALSE)
+```
+```{r}
+unlist(results_mplus_bcrec$fit)
+```
+```{r, eval = FALSE}
+#lavaan
+results_lav_bcrec <- fit.lavaan(blocks_con, itf, model = 'irt', data = data_recoded)
+```
+```{r, eval = FALSE}
+results_lav_bcrec <- lavaan::fitmeasures(results_lav_bcrec)[c('chisq.scaled','df.scaled','pvalue.scaled',
+                                     'rmsea.scaled','rmsea.ci.lower.scaled','rmsea.ci.upper.scaled',
+                                     'rmsea.pvalue.scaled','cfi.scaled')]
+```
+```{r}
+results_lav_bcrec
+```
+```{r, eval = FALSE}
+scores_results_lav_bcrec <- lavaan::lavPredict(results_lav_bcrec)
+```
+
+Here, we also must correct the fit indices, as there are redundancies among the thresholds and tetrachoric correlations. Again, the redundancies can be determined with the function `redundancies`. We directly correct the fit with `fit.correct`:
+```{r}
+#save fit measures
+tmp <- results_lav_bc_fm
+fit.correct(1000, blocks_con, tmp['chisq.scaled'], tmp['df.scaled'], tmp['baseline.chisq.scaled'],
+            tmp['baseline.df.scaled'])
+```
+
+## Simulating only relevant data
+
+The estimation of a full design will most likely seldom be of interest. More likely, (linked) block designs are of interest. Especially for simulations with many items (more than 50), many binary variables are simulated and saved. While the simulation of all items is important (see Jansen \& Schulze, 2023b), saving all items is not. `sim.data` can also return only items that are of relevance. For that we need to specify the argument `variables`. Assume we have the linked block design we specified before. We only have to give the item names of the sorted blocks and define it as the `variables` argument:
+```{r}
+#Get the relevant names
+tmp_names <- i.name(blocks_con_sorted)
+
+#same example as before
+set.seed(1234)
+data <- sim.data(nfactor = nfactor, nitem = nitem, nperson = nperson, itf = itf, varcov = varcov,
+                 lmu = lmu, loadings = loadings, variables = tmp_names)
+```
+```{r, eval = FALSE}
+#save the file
+write.table(data, 'myDataFile.dat', quote = FALSE, sep = " ", col.names = FALSE,
+            row.names = FALSE)
+```
+For the Mplus analysis, the argument `data_full` must then be set to `FALSE`.
+
+Taken together, we have demonstrated the basic steps on how to use the functions given by `ThurMod`. Please report any bugs. If you miss functions that could be helpful for the analysis of Thurstonian forced-choice data, please let me know.
+
+# References
+Brown, A., \& Maydeu-Olivares, A. (2011). Item response modeling of forced-choice questionnaires. <i>Educational and Psychological Measurement</i>, <i>71</i>(3), 460-502. <a href="https://doi.org/10.1177/0013164410375112">https://doi.org/10.1177/0013164410375112</a>
+
+Jansen, M. T., \& Schulze, R. (2023a). <i>Item scaling of social desirability using conjoint measurement: A comparison of ratings, paired comparisons, and rankings</i>. Manuscript in preparation.
+
+Jansen, M. T., \& Schulze, R. (in press). <i>The Thurstonian linked bock design: Improving Thurstonian modeling for paired comparison and ranking data</i>. Educational and Psychological Measurement.
+
+Maydeu-Olivares, A., \& Böckenholt, U. (2005). Structural equation modeling of paired-comparison and ranking data. <i>Psychological Methods</i>, <i>10</i>(3), 285–304. <a href="https://doi.org/10.1037/1082-989X.10.3.285">https://doi.org/10.1037/1082-989X.10.3.285</a>
+
+Maydeu-Olivares, A., \& Brown, A. (2010). Item response modeling of paired comparison and ranking data. <i>Multivariate Behavioural Research</i>, <i>45</i>(6), 935-974. <a href="https://doi.org/10.1080/00273171.2010.531231">https://doi.org/10.1080/00273171.2010.531231</a>
+
+
